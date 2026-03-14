@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>가사 기반 PPT 자동 생성</title>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/libs/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        /* Web Fonts */
+        @font-face { font-family: 'Cafe24Danjunghae'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/Cafe24Danjunghae.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'Cafe24Dangdanghae'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.2/Cafe24Dangdanghae.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'Cafe24Oneprettynight'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.1/Cafe24Oneprettynight.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'BaskinRobbins'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_20-04@2.1/BaskinRobbins.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'BMDOHYEON'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/BMDOHYEON.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'GmarketSansMedium'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'CBNU'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2202@1.0/CBNU.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'JalnanGothic'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_231029@1.1/JalnanGothic.woff') format('woff'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'Haenam'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2206-02@1.0/Haenam.woff2') format('woff2'); font-weight: normal; font-style: normal; }
+        @font-face { font-family: 'SeoulHangangM'; src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/SeoulHangangM.woff') format('woff'); font-weight: normal; font-style: normal; }
+
+        * { box-sizing: border-box; font-family: 'Malgun Gothic', sans-serif; }
+        body { margin: 0; display: flex; height: 100vh; background-color: #1e1e1e; color: #fff; }
+        
+        /* Left Panel */
+        .panel-left {
+            width: 350px;
+            min-width: 300px;
+            background-color: #2d2d2d;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.9rem; color: #ccc; }
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select,
+        .form-group input[type="number"] {
+            width: 100%; padding: 8px; border: 1px solid #555; border-radius: 4px;
+            background-color: #1e1e1e; color: #fff;
+        }
+        .form-group textarea { resize: vertical; min-height: 120px; }
+        .form-group input[type="color"] {
+            width: 100%; height: 40px; border: none; padding: 0; background: none; cursor: pointer;
+        }
+        .form-group input[type="file"] {
+            font-size: 0.9rem;
+            padding: 5px 0;
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; }
+        .checkbox-group input { width: 16px; height: 16px; cursor: pointer; }
+        .checkbox-group label { cursor: pointer; font-size: 0.9rem; color: #ccc; }
+        
+        .help-text { font-size: 0.75rem; color: #aaa; margin-top: -2px; }
+
+        /* Dropdown Button */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .download-btn {
+            width: 100%;
+            background-color: #4CAF50; color: white; border: none; padding: 12px 16px;
+            font-size: 1rem; font-weight: bold; border-radius: 4px; cursor: pointer;
+            transition: background 0.2s;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .download-btn:hover { background-color: #45a049; }
+        .download-btn:disabled { background-color: #666; cursor: not-allowed; }
+        
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 100%;
+            background-color: #333;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+            z-index: 100;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            overflow: hidden;
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-item {
+            color: white;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            cursor: pointer;
+            font-size: 0.95rem;
+            border-bottom: 1px solid #444;
+        }
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background-color: #4CAF50; }
+
+        /* Right Panel */
+        .panel-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            background-color: #121212;
+            overflow: hidden;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 960px;
+            flex-shrink: 0;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { color: #fff; background: #333; }
+        .tab-btn.active { color: #fff; background: #4CAF50; }
+
+        .tab-content {
+            display: none;
+            width: 100%;
+            max-width: 960px;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #tab-all.active {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            align-items: start;
+            align-content: start;
+        }
+
+        #tab-all .preview-wrapper {
+            margin-bottom: 0;
+        }
+
+        /* Scrollbar for tab content */
+        .tab-content::-webkit-scrollbar { width: 8px; }
+        .tab-content::-webkit-scrollbar-track { background: #1e1e1e; border-radius: 4px; }
+        .tab-content::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        .tab-content::-webkit-scrollbar-thumb:hover { background: #777; }
+        
+        .preview-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-bottom: 20px;
+        }
+
+        .preview-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #000000;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+            container-type: inline-size;
+        }
+
+        .slide-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 20;
+            font-family: sans-serif;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .preview-title {
+            position: absolute;
+            left: 5%;
+            width: 90%;
+            text-align: center;
+            z-index: 10;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .preview-lyrics {
+            position: absolute;
+            left: 5%;
+            width: 90%;
+            text-align: center;
+            z-index: 5;
+            white-space: pre-wrap;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .preview-date {
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            z-index: 10;
+            margin: 0;
+            line-height: 1.2;
+            text-align: left;
+        }
+
+        .preview-church {
+            position: absolute;
+            top: 5%;
+            right: 5%;
+            z-index: 10;
+            margin: 0;
+            line-height: 1.2;
+            text-align: right;
+        }
+
+        /* Position classes for Title */
+        .title-pos-top { top: 5%; bottom: auto; transform: none; }
+        .title-pos-middle { top: 50%; bottom: auto; transform: translateY(-50%); }
+        .title-pos-bottom { top: auto; bottom: 5%; transform: none; }
+
+        /* Position classes for Lyrics */
+        .lyrics-pos-top { top: 18%; bottom: auto; transform: none; }
+        .lyrics-pos-middle { top: 50%; bottom: auto; transform: translateY(-50%); }
+        .lyrics-pos-bottom { top: auto; bottom: 18%; transform: none; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .panel-left { width: 100%; height: 50vh; border-right: none; border-bottom: 1px solid #444; }
+            .panel-right { height: 50vh; padding: 20px; }
+            #tab-all.active { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="panel-left">
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1px solid #444; padding-bottom: 10px;">
+            <h2 style="margin: 0; padding: 0; border: none;">PPT 설정</h2>
+            <span style="font-size: 0.75rem; opacity: 0.5;">Made by 김민혁</span>
+        </div>
+        
+        <div class="form-group">
+            <label for="lyrics">가사 입력 (빈 줄로 슬라이드 구분)</label>
+            <textarea id="lyrics" placeholder="1절 가사...&#10;&#10;2절 가사..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="songTitle">곡 제목</label>
+            <input type="text" id="songTitle" placeholder="예: 어메이징 그레이스">
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="showTitle" checked>
+            <label for="showTitle">곡 제목 표시</label>
+        </div>
+
+        <div class="form-group">
+            <label for="fontFamily">글꼴 (폰트)</label>
+            <select id="fontFamily">
+                <option value="Malgun Gothic">맑은 고딕 (기본)</option>
+                <option value="Cafe24Danjunghae">카페24 단정해</option>
+                <option value="Cafe24Dangdanghae">카페24 당당해</option>
+                <option value="Cafe24Oneprettynight">카페24 고운밤</option>
+                <option value="BaskinRobbins">베스킨라빈스체</option>
+                <option value="BMDOHYEON">배달의민족 도현체</option>
+                <option value="GmarketSansMedium">Gmarket Sans</option>
+                <option value="CBNU">충북대70주년체</option>
+                <option value="JalnanGothic">여기어때 잘난체</option>
+                <option value="Haenam">해남체</option>
+                <option value="SeoulHangangM">서울 한강체</option>
+            </select>
+            <div class="help-text">* PPT 파일에 폰트가 적용되려면 해당 PC에 폰트가 설치되어 있어야 합니다. (이미지 PPT 제외)</div>
+        </div>
+
+        <div class="form-group">
+            <label for="titlePos">곡 제목 위치</label>
+            <select id="titlePos">
+                <option value="top">상단 (Top)</option>
+                <option value="middle">중단 (Middle)</option>
+                <option value="bottom" selected>하단 (Bottom)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="lyricsPos">가사 위치</label>
+            <select id="lyricsPos">
+                <option value="top" selected>상단 (Top)</option>
+                <option value="middle">중단 (Middle)</option>
+                <option value="bottom">하단 (Bottom)</option>
+            </select>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;">
+                <label for="titleFontSize">곡 제목 크기 (pt)</label>
+                <input type="number" id="titleFontSize" value="20" min="10" max="150">
+            </div>
+            <div class="form-group" style="flex: 1;">
+                <label for="lyricsFontSize">가사 크기 (pt)</label>
+                <input type="number" id="lyricsFontSize" value="35" min="10" max="150">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="fontWeight">글자 굵기</label>
+            <select id="fontWeight">
+                <option value="normal">보통 (Normal)</option>
+                <option value="bold" selected>굵게 (Bold)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="fontColor">글자 색상</label>
+            <input type="color" id="fontColor" value="#ffffff">
+        </div>
+
+        <div class="form-group">
+            <label for="bgColor">배경 색상</label>
+            <input type="color" id="bgColor" value="#000000">
+        </div>
+
+        <div class="form-group">
+            <label for="bgImage">배경 이미지 (선택)</label>
+            <input type="file" id="bgImage" accept="image/*">
+        </div>
+
+        <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 15px;">
+            <div class="checkbox-group">
+                <input type="checkbox" id="showDate">
+                <label for="showDate">날짜 표시 (좌측 상단)</label>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <input type="text" id="dateText" placeholder="예: 2026년 3월 15일">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="dateFontSize">크기 (pt)</label>
+                    <input type="number" id="dateFontSize" value="12" min="10" max="100">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="dateOpacity">투명도 (%)</label>
+                    <input type="number" id="dateOpacity" value="50" min="0" max="100">
+                </div>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid #444; margin-top: 5px; padding-top: 15px; margin-bottom: 10px;">
+            <div class="checkbox-group">
+                <input type="checkbox" id="showChurch">
+                <label for="showChurch">교회 이름 표시 (우측 상단)</label>
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+                <input type="text" id="churchText" placeholder="예: 00교회">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="churchFontSize">크기 (pt)</label>
+                    <input type="number" id="churchFontSize" value="12" min="10" max="100">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="churchOpacity">투명도 (%)</label>
+                    <input type="number" id="churchOpacity" value="50" min="0" max="100">
+                </div>
+            </div>
+        </div>
+
+        <div class="dropdown" id="downloadDropdown">
+            <button class="download-btn" id="downloadBtnMain">
+                <span>PPT 다운로드</span>
+                <span style="font-size: 0.8em;">▼</span>
+            </button>
+            <div class="dropdown-menu" id="downloadMenu">
+                <div class="dropdown-item" id="btnDownloadEditable">일반 PPT 다운로드 (수정 가능)</div>
+                <div class="dropdown-item" id="btnDownloadImage">이미지 PPT 다운로드 (수정 불가)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-right">
+        <div class="tabs">
+            <button class="tab-btn active" data-target="tab-style">스타일 미리보기</button>
+            <button class="tab-btn" data-target="tab-all">전체 슬라이드</button>
+        </div>
+
+        <div id="tab-style" class="tab-content active">
+            <div class="preview-wrapper">
+                <div class="preview-container" id="previewContainer">
+                    <div class="preview-date" id="previewDate">날짜</div>
+                    <div class="preview-church" id="previewChurch">교회 이름</div>
+                    <div class="preview-title" id="previewTitle">곡 제목</div>
+                    <div class="preview-lyrics" id="previewLyrics">가사 미리보기<br>두 번째 줄</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-all" class="tab-content">
+            <!-- Dynamically populated with all slides -->
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            lyrics: "",
+            songTitle: "",
+            showTitle: true,
+            fontFamily: "Malgun Gothic",
+            titlePos: "bottom",
+            lyricsPos: "top",
+            titleFontSize: 20,
+            lyricsFontSize: 35,
+            fontWeight: "bold",
+            fontColor: "#ffffff",
+            bgColor: "#000000",
+            bgImageBase64: null,
+            showDate: false,
+            dateText: "",
+            dateFontSize: 12,
+            dateOpacity: 50,
+            showChurch: false,
+            churchText: "",
+            churchFontSize: 12,
+            churchOpacity: 50
+        };
+
+        // DOM Elements
+        const els = {
+            lyrics: document.getElementById('lyrics'),
+            songTitle: document.getElementById('songTitle'),
+            showTitle: document.getElementById('showTitle'),
+            fontFamily: document.getElementById('fontFamily'),
+            titlePos: document.getElementById('titlePos'),
+            lyricsPos: document.getElementById('lyricsPos'),
+            titleFontSize: document.getElementById('titleFontSize'),
+            lyricsFontSize: document.getElementById('lyricsFontSize'),
+            fontWeight: document.getElementById('fontWeight'),
+            fontColor: document.getElementById('fontColor'),
+            bgColor: document.getElementById('bgColor'),
+            bgImage: document.getElementById('bgImage'),
+            
+            showDate: document.getElementById('showDate'),
+            dateText: document.getElementById('dateText'),
+            dateFontSize: document.getElementById('dateFontSize'),
+            dateOpacity: document.getElementById('dateOpacity'),
+            
+            showChurch: document.getElementById('showChurch'),
+            churchText: document.getElementById('churchText'),
+            churchFontSize: document.getElementById('churchFontSize'),
+            churchOpacity: document.getElementById('churchOpacity'),
+            
+            downloadBtnMain: document.getElementById('downloadBtnMain'),
+            downloadMenu: document.getElementById('downloadMenu'),
+            btnDownloadEditable: document.getElementById('btnDownloadEditable'),
+            btnDownloadImage: document.getElementById('btnDownloadImage'),
+            
+            previewContainer: document.getElementById('previewContainer'),
+            previewTitle: document.getElementById('previewTitle'),
+            previewLyrics: document.getElementById('previewLyrics'),
+            previewDate: document.getElementById('previewDate'),
+            previewChurch: document.getElementById('previewChurch'),
+            
+            tabBtns: document.querySelectorAll('.tab-btn'),
+            tabContents: document.querySelectorAll('.tab-content'),
+            tabAll: document.getElementById('tab-all')
+        };
+
+        // Tab Switching
+        els.tabBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                els.tabBtns.forEach(b => b.classList.remove('active'));
+                els.tabContents.forEach(c => c.classList.remove('active'));
+                
+                e.target.classList.add('active');
+                document.getElementById(e.target.dataset.target).classList.add('active');
+            });
+        });
+
+        // Dropdown Logic
+        els.downloadBtnMain.addEventListener('click', (e) => {
+            e.stopPropagation();
+            els.downloadMenu.classList.toggle('show');
+        });
+
+        window.addEventListener('click', () => {
+            if (els.downloadMenu.classList.contains('show')) {
+                els.downloadMenu.classList.remove('show');
+            }
+        });
+
+        // Event Listeners for Settings
+        els.lyrics.addEventListener('input', (e) => { state.lyrics = e.target.value; updatePreview(); });
+        els.songTitle.addEventListener('input', (e) => { state.songTitle = e.target.value; updatePreview(); });
+        els.showTitle.addEventListener('change', (e) => { state.showTitle = e.target.checked; updatePreview(); });
+        els.fontFamily.addEventListener('change', (e) => { state.fontFamily = e.target.value; updatePreview(); });
+        els.titlePos.addEventListener('change', (e) => { state.titlePos = e.target.value; updatePreview(); });
+        els.lyricsPos.addEventListener('change', (e) => { state.lyricsPos = e.target.value; updatePreview(); });
+        els.titleFontSize.addEventListener('input', (e) => { state.titleFontSize = parseInt(e.target.value) || 20; updatePreview(); });
+        els.lyricsFontSize.addEventListener('input', (e) => { state.lyricsFontSize = parseInt(e.target.value) || 35; updatePreview(); });
+        els.fontWeight.addEventListener('change', (e) => { state.fontWeight = e.target.value; updatePreview(); });
+        els.fontColor.addEventListener('input', (e) => { state.fontColor = e.target.value; updatePreview(); });
+        els.bgColor.addEventListener('input', (e) => { state.bgColor = e.target.value; updatePreview(); });
+        
+        els.showDate.addEventListener('change', (e) => { state.showDate = e.target.checked; updatePreview(); });
+        els.dateText.addEventListener('input', (e) => { state.dateText = e.target.value; updatePreview(); });
+        els.dateFontSize.addEventListener('input', (e) => { state.dateFontSize = parseInt(e.target.value) || 12; updatePreview(); });
+        els.dateOpacity.addEventListener('input', (e) => { state.dateOpacity = parseInt(e.target.value) || 50; updatePreview(); });
+        
+        els.showChurch.addEventListener('change', (e) => { state.showChurch = e.target.checked; updatePreview(); });
+        els.churchText.addEventListener('input', (e) => { state.churchText = e.target.value; updatePreview(); });
+        els.churchFontSize.addEventListener('input', (e) => { state.churchFontSize = parseInt(e.target.value) || 12; updatePreview(); });
+        els.churchOpacity.addEventListener('input', (e) => { state.churchOpacity = parseInt(e.target.value) || 50; updatePreview(); });
+
+        els.bgImage.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    state.bgImageBase64 = event.target.result;
+                    updatePreview();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                state.bgImageBase64 = null;
+                updatePreview();
+            }
+        });
+
+        els.btnDownloadEditable.addEventListener('click', generatePPT);
+        els.btnDownloadImage.addEventListener('click', generateImagePPT);
+
+        // Helper to apply styles to a container
+        function applyStylesToContainer(container, elements, slideText, fixedWidth = null) {
+            const { titleEl, lyricsEl, dateEl, churchEl } = elements;
+            // Background
+            if (state.bgImageBase64) {
+                container.style.backgroundImage = `url(${state.bgImageBase64})`;
+                container.style.backgroundColor = 'transparent';
+            } else {
+                container.style.backgroundImage = 'none';
+                container.style.backgroundColor = state.bgColor;
+            }
+
+            // Title
+            titleEl.style.display = state.showTitle ? 'block' : 'none';
+            titleEl.textContent = state.songTitle || "곡 제목";
+            titleEl.className = `preview-title title-pos-${state.titlePos}`;
+            
+            titleEl.style.color = state.fontColor;
+            titleEl.style.fontWeight = state.fontWeight;
+            titleEl.style.fontFamily = `'${state.fontFamily}', 'Malgun Gothic', sans-serif`;
+
+            // Lyrics
+            lyricsEl.innerHTML = slideText.replace(/\n/g, '<br>');
+            lyricsEl.className = `preview-lyrics lyrics-pos-${state.lyricsPos}`;
+            lyricsEl.style.color = state.fontColor;
+            lyricsEl.style.fontWeight = state.fontWeight;
+            lyricsEl.style.fontFamily = `'${state.fontFamily}', 'Malgun Gothic', sans-serif`;
+
+            // Date
+            if (dateEl) {
+                dateEl.style.display = state.showDate ? 'block' : 'none';
+                dateEl.textContent = state.dateText || "날짜";
+                dateEl.className = 'preview-date';
+                dateEl.style.color = state.fontColor;
+                dateEl.style.fontWeight = 'normal';
+                dateEl.style.fontFamily = `'${state.fontFamily}', 'Malgun Gothic', sans-serif`;
+                dateEl.style.opacity = 1 - (state.dateOpacity / 100);
+            }
+
+            // Church
+            if (churchEl) {
+                churchEl.style.display = state.showChurch ? 'block' : 'none';
+                churchEl.textContent = state.churchText || "교회 이름";
+                churchEl.className = 'preview-church';
+                churchEl.style.color = state.fontColor;
+                churchEl.style.fontWeight = 'normal';
+                churchEl.style.fontFamily = `'${state.fontFamily}', 'Malgun Gothic', sans-serif`;
+                churchEl.style.opacity = 1 - (state.churchOpacity / 100);
+            }
+
+            // Font Size Calculation
+            if (fixedWidth) {
+                // When rendering off-screen for html2canvas, we use exact pixels
+                const cqiToPx = fixedWidth / 100;
+                titleEl.style.fontSize = `${state.titleFontSize * 0.138 * cqiToPx}px`;
+                lyricsEl.style.fontSize = `${state.lyricsFontSize * 0.138 * cqiToPx}px`;
+                if (dateEl) dateEl.style.fontSize = `${state.dateFontSize * 0.138 * cqiToPx}px`;
+                if (churchEl) churchEl.style.fontSize = `${state.churchFontSize * 0.138 * cqiToPx}px`;
+            } else {
+                // When rendering in the responsive preview, we use container queries
+                titleEl.style.fontSize = `calc(${state.titleFontSize} * 0.138cqi)`;
+                lyricsEl.style.fontSize = `calc(${state.lyricsFontSize} * 0.138cqi)`;
+                if (dateEl) dateEl.style.fontSize = `calc(${state.dateFontSize} * 0.138cqi)`;
+                if (churchEl) churchEl.style.fontSize = `calc(${state.churchFontSize} * 0.138cqi)`;
+            }
+        }
+
+        // Update Preview
+        function updatePreview() {
+            const slides = state.lyrics.split(/\n\n+/).filter(s => s.trim() !== '');
+            const firstSlideText = slides.length > 0 ? slides[0] : "가사 미리보기\n두 번째 줄";
+
+            // 1. Update Single Style Preview
+            applyStylesToContainer(els.previewContainer, {
+                titleEl: els.previewTitle, 
+                lyricsEl: els.previewLyrics,
+                dateEl: els.previewDate,
+                churchEl: els.previewChurch
+            }, firstSlideText);
+
+            // 2. Update All Slides Preview
+            els.tabAll.innerHTML = ''; 
+            const allSlides = slides.length > 0 ? slides : ["가사를 입력해주세요."];
+
+            allSlides.forEach((slideText, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'preview-wrapper';
+                
+                const container = document.createElement('div');
+                container.className = 'preview-container';
+                
+                const titleEl = document.createElement('div');
+                const lyricsEl = document.createElement('div');
+                const dateEl = document.createElement('div');
+                const churchEl = document.createElement('div');
+                
+                applyStylesToContainer(container, { titleEl, lyricsEl, dateEl, churchEl }, slideText);
+
+                container.appendChild(dateEl);
+                container.appendChild(churchEl);
+                container.appendChild(titleEl);
+                container.appendChild(lyricsEl);
+                
+                const badge = document.createElement('div');
+                badge.textContent = `${index + 1}`;
+                badge.className = 'slide-badge';
+                container.appendChild(badge);
+
+                wrapper.appendChild(container);
+                els.tabAll.appendChild(wrapper);
+            });
+        }
+
+        // Generate Editable PPT
+        function generatePPT() {
+            const pptx = new PptxGenJS();
+            pptx.layout = 'LAYOUT_16x9'; // 10 x 5.625 inches
+
+            const slides = state.lyrics.split(/\n\n+/).filter(s => s.trim() !== '');
+            
+            if (slides.length === 0) {
+                slides.push("가사를 입력해주세요.");
+            }
+
+            const getValign = (pos) => {
+                if (pos === 'top') return 'top';
+                if (pos === 'bottom') return 'bottom';
+                return 'middle';
+            };
+
+            slides.forEach(slideText => {
+                const slide = pptx.addSlide();
+
+                // Background
+                if (state.bgImageBase64) {
+                    slide.background = { data: state.bgImageBase64 };
+                } else {
+                    slide.background = { color: state.bgColor.replace('#', '') };
+                }
+
+                // Title
+                if (state.showTitle && state.songTitle) {
+                    let titleY = 0.2;
+                    if (state.titlePos === 'middle') titleY = 2.4;
+                    if (state.titlePos === 'bottom') titleY = 4.6;
+
+                    slide.addText(state.songTitle, {
+                        x: 0.5,
+                        y: titleY,
+                        w: 9.0,
+                        h: 0.8,
+                        align: 'center',
+                        valign: getValign(state.titlePos),
+                        fontSize: state.titleFontSize,
+                        color: state.fontColor.replace('#', ''),
+                        bold: state.fontWeight === 'bold',
+                        fontFace: state.fontFamily
+                    });
+                }
+
+                // Date
+                if (state.showDate && state.dateText) {
+                    slide.addText(state.dateText, {
+                        x: 0.5, y: 0.3, w: 4.0, h: 0.5,
+                        align: 'left', valign: 'top',
+                        fontSize: state.dateFontSize,
+                        color: state.fontColor.replace('#', ''),
+                        bold: false,
+                        fontFace: state.fontFamily,
+                        transparency: state.dateOpacity
+                    });
+                }
+
+                // Church
+                if (state.showChurch && state.churchText) {
+                    slide.addText(state.churchText, {
+                        x: 5.5, y: 0.3, w: 4.0, h: 0.5,
+                        align: 'right', valign: 'top',
+                        fontSize: state.churchFontSize,
+                        color: state.fontColor.replace('#', ''),
+                        bold: false,
+                        fontFace: state.fontFamily,
+                        transparency: state.churchOpacity
+                    });
+                }
+
+                // Lyrics
+                let lyricsY = 1.0;
+                let lyricsH = 3.6;
+                
+                if (state.lyricsPos === 'top') {
+                    lyricsY = 1.0;
+                    lyricsH = 3.6;
+                } else if (state.lyricsPos === 'middle') {
+                    lyricsY = 1.0;
+                    lyricsH = 3.6;
+                } else if (state.lyricsPos === 'bottom') {
+                    lyricsY = 1.0;
+                    lyricsH = 3.6;
+                }
+
+                // If title is not shown, we can expand the lyrics area
+                if (!state.showTitle || !state.songTitle) {
+                    lyricsY = 0.5;
+                    lyricsH = 4.625;
+                }
+
+                slide.addText(slideText, {
+                    x: 0.5,
+                    y: lyricsY,
+                    w: 9.0,
+                    h: lyricsH,
+                    align: 'center',
+                    valign: getValign(state.lyricsPos),
+                    fontSize: state.lyricsFontSize,
+                    color: state.fontColor.replace('#', ''),
+                    bold: state.fontWeight === 'bold',
+                    fontFace: state.fontFamily
+                });
+            });
+
+            pptx.writeFile({ fileName: "방송실_자막_일반.pptx" });
+        }
+
+        // Generate Image-based PPT (Non-editable)
+        async function generateImagePPT() {
+            const pptx = new PptxGenJS();
+            pptx.layout = 'LAYOUT_16x9'; // 10 x 5.625 inches
+
+            const slides = state.lyrics.split(/\n\n+/).filter(s => s.trim() !== '');
+            if (slides.length === 0) slides.push("가사를 입력해주세요.");
+
+            // Create a temporary container for rendering off-screen
+            const tempWrapper = document.createElement('div');
+            tempWrapper.style.position = 'absolute';
+            tempWrapper.style.top = '0';
+            tempWrapper.style.left = '0';
+            tempWrapper.style.zIndex = '-1000';
+            tempWrapper.style.opacity = '0';
+            tempWrapper.style.pointerEvents = 'none';
+            tempWrapper.style.width = '960px';
+            tempWrapper.style.height = '540px';
+            document.body.appendChild(tempWrapper);
+
+            const container = document.createElement('div');
+            container.className = 'preview-container';
+            container.style.width = '100%';
+            container.style.height = '100%';
+            
+            const titleEl = document.createElement('div');
+            const lyricsEl = document.createElement('div');
+            const dateEl = document.createElement('div');
+            const churchEl = document.createElement('div');
+            
+            container.appendChild(dateEl);
+            container.appendChild(churchEl);
+            container.appendChild(titleEl);
+            container.appendChild(lyricsEl);
+            tempWrapper.appendChild(container);
+
+            // Show loading state
+            const originalText = els.downloadBtnMain.innerHTML;
+            els.downloadBtnMain.innerHTML = '<span>생성 중... ⏳</span>';
+            els.downloadBtnMain.disabled = true;
+
+            try {
+                for (let i = 0; i < slides.length; i++) {
+                    // Apply styles with fixed width (960px) for accurate pixel conversion
+                    applyStylesToContainer(container, { titleEl, lyricsEl, dateEl, churchEl }, slides[i], 960);
+                    
+                    // Yield to browser to ensure styles and fonts are painted
+                    await new Promise(r => setTimeout(r, 100));
+
+                    const canvas = await html2canvas(container, {
+                        scale: 2, // Higher resolution
+                        useCORS: true,
+                        backgroundColor: state.bgImageBase64 ? null : state.bgColor,
+                        logging: false
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/png');
+                    
+                    const slide = pptx.addSlide();
+                    // 10 x 5.625 inches (16:9)
+                    slide.addImage({ data: imgData, x: 0, y: 0, w: 10, h: 5.625 });
+                }
+
+                pptx.writeFile({ fileName: "방송실_자막_이미지(수정불가).pptx" });
+            } catch (err) {
+                console.error(err);
+                alert('이미지 PPT 생성 중 오류가 발생했습니다.');
+            } finally {
+                document.body.removeChild(tempWrapper);
+                els.downloadBtnMain.innerHTML = originalText;
+                els.downloadBtnMain.disabled = false;
+            }
+        }
+
+        // Initialize
+        updatePreview();
+    </script>
+</body>
+</html>
