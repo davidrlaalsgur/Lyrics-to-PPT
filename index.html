@@ -785,7 +785,8 @@
                 });
             });
 
-            pptx.writeFile({ fileName: "방송실_자막_일반.pptx" });
+            const fileName = (state.songTitle.trim() || "방송실_자막") + ".pptx";
+            pptx.writeFile({ fileName: fileName });
         }
 
         // Generate Image-based PPT (Non-editable)
@@ -851,7 +852,8 @@
                     slide.addImage({ data: imgData, x: 0, y: 0, w: 10, h: 5.625 });
                 }
 
-                pptx.writeFile({ fileName: "방송실_자막_이미지(수정불가).pptx" });
+                const fileName = (state.songTitle.trim() || "방송실_자막") + "_이미지(수정불가).pptx";
+                pptx.writeFile({ fileName: fileName });
             } catch (err) {
                 console.error(err);
                 alert('이미지 PPT 생성 중 오류가 발생했습니다.');
